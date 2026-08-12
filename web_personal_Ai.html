@@ -1,0 +1,821 @@
+<!-- =========================================================================
+  RAHNUMA — Career & Course Guide Chat Widget
+  Paste this ENTIRE block just before the closing </body> tag of any website.
+  It is self-contained (HTML + CSS + JS) and namespaced under "rhw-" classes
+  and an #rhw-root id, so it will not clash with your site's existing styles.
+  A floating compass button appears in the bottom-right corner; clicking it
+  opens the chat panel.
+========================================================================== -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  #rhw-root, #rhw-root * { box-sizing: border-box; }
+  #rhw-root {
+    --rhw-navy: #16233F;
+    --rhw-navy-light: #22335A;
+    --rhw-parchment: #FBF8F2;
+    --rhw-parchment-line: #E7E0CF;
+    --rhw-gold: #C89B3C;
+    --rhw-teal: #2F6F5E;
+    --rhw-coral: #C1553B;
+    --rhw-ink: #1F2430;
+    --rhw-muted: #857F6E;
+    --rhw-white: #FFFFFF;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    position: fixed;
+    z-index: 999999;
+    bottom: 24px;
+    right: 24px;
+  }
+
+  /* ---------- Floating launcher button ---------- */
+  .rhw-launcher {
+    width: 64px;
+    height: 64px;
+    border-radius: 20px;
+    background: linear-gradient(145deg, var(--rhw-teal) 0%, var(--rhw-navy) 65%);
+    border: none;
+    box-shadow: 0 10px 28px rgba(22, 35, 63, 0.4);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-radius 0.25s ease;
+    position: relative;
+  }
+  .rhw-launcher::before {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 24px;
+    border: 1.5px solid var(--rhw-gold);
+    opacity: 0.55;
+    animation: rhw-ring 2.4s ease-out infinite;
+  }
+  @keyframes rhw-ring {
+    0% { transform: scale(0.9); opacity: 0.55; }
+    70% { transform: scale(1.18); opacity: 0; }
+    100% { transform: scale(1.18); opacity: 0; }
+  }
+  .rhw-launcher:hover {
+    transform: translateY(-3px) scale(1.05);
+    border-radius: 26px;
+    box-shadow: 0 14px 32px rgba(22, 35, 63, 0.5);
+  }
+  .rhw-launcher svg { width: 28px; height: 28px; position: relative; z-index: 1; transition: transform 0.4s ease; }
+  .rhw-launcher:hover svg { transform: scale(1.1) rotate(-8deg); }
+  .rhw-launcher .rhw-badge {
+    position: absolute;
+    bottom: -6px; right: -8px;
+    background: var(--rhw-gold);
+    color: var(--rhw-navy);
+    font-family: 'Fraunces', serif;
+    font-weight: 700;
+    font-size: 10px;
+    letter-spacing: 0.4px;
+    padding: 2px 6px;
+    border-radius: 999px;
+    border: 2px solid var(--rhw-parchment);
+    z-index: 2;
+  }
+
+  /* ---------- Chat panel ---------- */
+  .rhw-panel {
+    position: absolute;
+    bottom: 78px;
+    right: 0;
+    width: 370px;
+    max-width: calc(100vw - 32px);
+    height: 560px;
+    max-height: calc(100vh - 120px);
+    background: var(--rhw-parchment);
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(22, 35, 63, 0.3);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--rhw-parchment-line);
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+  }
+  .rhw-panel.rhw-open { display: flex; opacity: 1; transform: translateY(0) scale(1); }
+
+  .rhw-header {
+    background: linear-gradient(135deg, var(--rhw-navy), var(--rhw-navy-light));
+    color: var(--rhw-white);
+    padding: 16px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .rhw-header .rhw-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: var(--rhw-parchment);
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--rhw-gold);
+    flex-shrink: 0;
+  }
+  .rhw-header .rhw-avatar svg { width: 20px; height: 20px; }
+  .rhw-header-text { flex: 1; min-width: 0; }
+  .rhw-header-text .rhw-title {
+    font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; line-height: 1.2;
+  }
+  .rhw-header-text .rhw-subtitle {
+    font-size: 11.5px; color: rgba(255,255,255,0.7); margin-top: 2px;
+  }
+  .rhw-close {
+    background: none; border: none; cursor: pointer; color: rgba(255,255,255,0.8);
+    padding: 4px; border-radius: 6px; flex-shrink: 0;
+  }
+  .rhw-close:hover { color: var(--rhw-white); background: rgba(255,255,255,0.1); }
+  .rhw-close svg { width: 18px; height: 18px; display: block; }
+
+  /* ---------- Messages ---------- */
+  .rhw-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background-image: repeating-linear-gradient(transparent, transparent 39px, var(--rhw-parchment-line) 40px);
+  }
+  .rhw-messages::-webkit-scrollbar { width: 6px; }
+  .rhw-messages::-webkit-scrollbar-thumb { background: var(--rhw-parchment-line); border-radius: 4px; }
+
+  .rhw-row { display: flex; }
+  .rhw-row.rhw-bot { justify-content: flex-start; }
+  .rhw-row.rhw-user { justify-content: flex-end; }
+
+  .rhw-bubble {
+    max-width: 82%;
+    padding: 10px 13px;
+    border-radius: 14px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  }
+  .rhw-row.rhw-bot .rhw-bubble {
+    background: var(--rhw-teal); color: var(--rhw-white);
+    border-bottom-left-radius: 4px;
+  }
+  .rhw-row.rhw-user .rhw-bubble {
+    background: var(--rhw-coral); color: var(--rhw-white);
+    border-bottom-right-radius: 4px;
+  }
+  .rhw-bubble b { color: var(--rhw-gold); }
+  .rhw-bubble ul { margin: 6px 0 0 0; padding-left: 18px; }
+  .rhw-bubble li { margin-bottom: 3px; }
+
+  .rhw-typing .rhw-bubble { display: flex; gap: 4px; align-items: center; padding: 12px 14px; }
+  .rhw-typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.85);
+    animation: rhw-bounce 1.2s infinite ease-in-out;
+  }
+  .rhw-typing span:nth-child(2) { animation-delay: 0.15s; }
+  .rhw-typing span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes rhw-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.5; } 30% { transform: translateY(-4px); opacity: 1; } }
+
+  /* ---------- Quick replies ---------- */
+  .rhw-chips {
+    display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 10px 14px; flex-shrink: 0;
+  }
+  .rhw-chip {
+    background: var(--rhw-white);
+    border: 1.5px solid var(--rhw-navy);
+    color: var(--rhw-navy);
+    font-size: 12.5px;
+    font-weight: 500;
+    padding: 7px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    font-family: inherit;
+  }
+  .rhw-chip:hover { background: var(--rhw-navy); color: var(--rhw-white); }
+
+  /* ---------- Input bar ---------- */
+  .rhw-inputbar {
+    display: flex; gap: 8px; padding: 12px 14px;
+    border-top: 1px solid var(--rhw-parchment-line);
+    background: var(--rhw-white);
+    flex-shrink: 0;
+  }
+  .rhw-inputbar input {
+    flex: 1; border: 1.5px solid var(--rhw-parchment-line); border-radius: 10px;
+    padding: 10px 12px; font-size: 13.5px; font-family: inherit; color: var(--rhw-ink);
+    outline: none; background: var(--rhw-parchment);
+  }
+  .rhw-inputbar input:focus { border-color: var(--rhw-gold); }
+  .rhw-send {
+    width: 40px; height: 40px; border-radius: 10px; border: none; flex-shrink: 0;
+    background: var(--rhw-navy); color: var(--rhw-white); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s ease;
+  }
+  .rhw-send:hover { background: var(--rhw-navy-light); }
+  .rhw-send svg { width: 17px; height: 17px; }
+
+  @media (max-width: 420px) {
+    #rhw-root { right: 12px; bottom: 12px; }
+    .rhw-panel { width: calc(100vw - 24px); right: -6px; }
+  }
+</style>
+
+<div id="rhw-root">
+  <div class="rhw-panel" id="rhwPanel">
+    <div class="rhw-header">
+      <div class="rhw-avatar">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2.5L13.6 9.2C13.9 10.5 14.9 11.5 16.2 11.8L22.5 13.4L16.2 15C14.9 15.3 13.9 16.3 13.6 17.6L12 24.3L10.4 17.6C10.1 16.3 9.1 15.3 7.8 15L1.5 13.4L7.8 11.8C9.1 11.5 10.1 10.5 10.4 9.2L12 2.5Z" fill="#C89B3C"/>
+        </svg>
+      </div>
+      <div class="rhw-header-text">
+        <div class="rhw-title">Kashif Personal AI</div>
+        <div class="rhw-subtitle">Your guide to careers &amp; course paths</div>
+      </div>
+      <button class="rhw-close" id="rhwClose" aria-label="Close chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+
+    <div class="rhw-messages" id="rhwMessages"></div>
+    <div class="rhw-chips" id="rhwChips"></div>
+
+    <div class="rhw-inputbar">
+      <input type="text" id="rhwInput" placeholder="Type a career or question…" autocomplete="off" />
+      <button class="rhw-send" id="rhwSend" aria-label="Send message">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <button class="rhw-launcher" id="rhwLauncher" aria-label="Open Kashif Personal AI chat">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2.5L13.6 9.2C13.9 10.5 14.9 11.5 16.2 11.8L22.5 13.4L16.2 15C14.9 15.3 13.9 16.3 13.6 17.6L12 24.3L10.4 17.6C10.1 16.3 9.1 15.3 7.8 15L1.5 13.4L7.8 11.8C9.1 11.5 10.1 10.5 10.4 9.2L12 2.5Z" fill="#C89B3C"/>
+      <circle cx="19.5" cy="5.5" r="1.6" fill="#FBF8F2"/>
+    </svg>
+    <span class="rhw-badge">AI</span>
+  </button>
+</div>
+
+<script>
+(function () {
+  /* ===================== Knowledge base ===================== */
+  var CATEGORIES = {
+    "Tech & Data": ["Software Developer", "Data Scientist", "UI/UX Designer", "Cybersecurity Analyst"],
+    "Business & Finance": ["Digital Marketer", "Business Analyst", "Accountant", "Entrepreneur"],
+    "Health & Science": ["Doctor", "Nurse", "Psychologist"],
+    "Creative & Education": ["Graphic Designer", "Content Writer", "Teacher"],
+    "Engineering": ["Civil Engineer", "Mechanical Engineer"],
+    "Computer Science & AI": ["AI/ML Engineer", "Computer Scientist", "Deep Learning Engineer", "NLP Engineer", "Computer Vision Engineer", "Robotics Engineer", "Cloud Engineer", "Data Analyst"]
+  };
+
+  var PROFESSIONS = {
+    "software developer": {
+      title: "Software Developer",
+      blurb: "You design, build and maintain the applications and systems that run on computers, phones and the web.",
+      keywords: ["software", "developer", "programmer", "coding", "coder", "web development", "app development"],
+      outline: [
+        "Programming fundamentals (variables, logic, control flow) — 3 weeks",
+        "A core language: Python or JavaScript — 4 weeks",
+        "Data structures & algorithms — 4 weeks",
+        "Web basics: HTML, CSS, and a framework (React) — 4 weeks",
+        "Databases & backend basics (SQL, REST APIs) — 3 weeks",
+        "Version control (Git) & a capstone project — 2 weeks"
+      ]
+    },
+    "data scientist": {
+      title: "Data Scientist",
+      blurb: "You turn raw data into insight and prediction, using statistics, programming and domain knowledge.",
+      keywords: ["data science", "data scientist", "machine learning", "ai engineer", "analytics"],
+      outline: [
+        "Statistics & probability foundations — 4 weeks",
+        "Python for data analysis (pandas, numpy) — 3 weeks",
+        "Data visualization (Matplotlib/Power BI) — 2 weeks",
+        "Machine learning fundamentals — 5 weeks",
+        "SQL & data wrangling — 2 weeks",
+        "Capstone: an end-to-end predictive project — 3 weeks"
+      ]
+    },
+    "ui/ux designer": {
+      title: "UI/UX Designer",
+      blurb: "You shape how digital products look, feel and function so they are useful and enjoyable for people.",
+      keywords: ["ui", "ux", "user experience", "user interface", "product design"],
+      outline: [
+        "Design fundamentals: color, layout, typography — 2 weeks",
+        "User research & personas — 2 weeks",
+        "Wireframing & prototyping (Figma) — 3 weeks",
+        "Interaction design & usability testing — 3 weeks",
+        "Design systems — 2 weeks",
+        "Portfolio project — 3 weeks"
+      ]
+    },
+    "cybersecurity analyst": {
+      title: "Cybersecurity Analyst",
+      blurb: "You protect networks, systems and data from digital threats and respond when incidents occur.",
+      keywords: ["cyber security", "cybersecurity", "ethical hacking", "security analyst", "infosec"],
+      outline: [
+        "Networking fundamentals (TCP/IP, DNS) — 3 weeks",
+        "Operating systems & Linux basics — 2 weeks",
+        "Security principles & common threats — 3 weeks",
+        "Ethical hacking & penetration testing basics — 4 weeks",
+        "Security tools (Wireshark, Nmap) — 2 weeks",
+        "Certification prep (e.g. Security+) — 3 weeks"
+      ]
+    },
+    "digital marketer": {
+      title: "Digital Marketer",
+      blurb: "You plan and run campaigns across search, social and content to grow a brand's audience and sales.",
+      keywords: ["digital marketing", "marketer", "seo", "social media marketing", "marketing"],
+      outline: [
+        "Marketing fundamentals & customer psychology — 2 weeks",
+        "SEO & content marketing — 3 weeks",
+        "Social media strategy & paid ads — 3 weeks",
+        "Email marketing & funnels — 2 weeks",
+        "Analytics (Google Analytics) — 2 weeks",
+        "Live campaign project — 2 weeks"
+      ]
+    },
+    "business analyst": {
+      title: "Business Analyst",
+      blurb: "You bridge business needs and technical solutions, analysing processes and recommending improvements.",
+      keywords: ["business analyst", "business analysis", "ba role"],
+      outline: [
+        "Business fundamentals & process mapping — 2 weeks",
+        "Requirements gathering & documentation — 2 weeks",
+        "Excel & data analysis — 3 weeks",
+        "SQL basics — 2 weeks",
+        "Agile & stakeholder communication — 2 weeks",
+        "Case-study capstone — 2 weeks"
+      ]
+    },
+    "accountant": {
+      title: "Accountant / Finance Professional",
+      blurb: "You track, report and advise on money — from bookkeeping to financial strategy.",
+      keywords: ["accountant", "accounting", "finance", "chartered accountant", "cfa"],
+      outline: [
+        "Financial accounting basics — 3 weeks",
+        "Cost & management accounting — 3 weeks",
+        "Taxation fundamentals — 2 weeks",
+        "Accounting software (Excel, QuickBooks) — 2 weeks",
+        "Financial reporting & analysis — 3 weeks",
+        "Professional certification track (e.g. ACCA/CA) — ongoing"
+      ]
+    },
+    "entrepreneur": {
+      title: "Entrepreneur",
+      blurb: "You build and run your own venture, turning an idea into a working, growing business.",
+      keywords: ["entrepreneur", "startup", "business owner", "founder"],
+      outline: [
+        "Idea validation & market research — 2 weeks",
+        "Business model design — 2 weeks",
+        "Basic finance & budgeting — 2 weeks",
+        "Marketing & sales fundamentals — 3 weeks",
+        "Legal & operations basics — 2 weeks",
+        "Building & pitching an MVP — 3 weeks"
+      ]
+    },
+    "doctor": {
+      title: "Doctor (Medicine)",
+      blurb: "You diagnose, treat and care for patients — a long path with deep scientific and clinical training.",
+      keywords: ["doctor", "physician", "mbbs", "medicine", "medical"],
+      outline: [
+        "Pre-medical sciences: biology, chemistry, physics — foundation years",
+        "MBBS (or equivalent): 4–6 years covering anatomy, physiology, pathology",
+        "Clinical rotations across specialties — final years",
+        "Licensing exam preparation",
+        "House job / internship — 1 year",
+        "Optional specialization (residency) — 3–7 years"
+      ]
+    },
+    "nurse": {
+      title: "Nurse",
+      blurb: "You provide direct patient care, support recovery, and work closely with doctors and families.",
+      keywords: ["nurse", "nursing"],
+      outline: [
+        "Anatomy & physiology fundamentals — 1 semester",
+        "Nursing science core courses — 2 years",
+        "Clinical practicals & hospital rotations — throughout program",
+        "Pharmacology basics — 1 semester",
+        "Licensing exam preparation",
+        "Specialization (ICU, pediatric, etc.) — optional, post-qualification"
+      ]
+    },
+    "psychologist": {
+      title: "Psychologist",
+      blurb: "You study the mind and behaviour, and help people understand and manage mental health and wellbeing.",
+      keywords: ["psychologist", "psychology", "therapist", "counselor", "counsellor"],
+      outline: [
+        "Introductory psychology & research methods — 1 year",
+        "Developmental & cognitive psychology — 1 year",
+        "Abnormal psychology & psychopathology — 1 semester",
+        "Counselling skills & practicum — 1 year",
+        "Statistics for psychology — 1 semester",
+        "Master's specialization & supervised clinical hours"
+      ]
+    },
+    "graphic designer": {
+      title: "Graphic Designer",
+      blurb: "You create visual content — logos, layouts, illustrations and branding — that communicates a message.",
+      keywords: ["graphic design", "graphic designer", "illustrator", "branding"],
+      outline: [
+        "Design fundamentals: color, layout, typography — 2 weeks",
+        "Adobe Photoshop & Illustrator — 4 weeks",
+        "Branding & logo design — 2 weeks",
+        "Print & digital layout — 2 weeks",
+        "Motion graphics basics — 2 weeks",
+        "Portfolio project — 2 weeks"
+      ]
+    },
+    "content writer": {
+      title: "Content Writer",
+      blurb: "You write clear, engaging content — articles, web copy, scripts — tailored to an audience and goal.",
+      keywords: ["content writer", "copywriter", "writing", "blogger"],
+      outline: [
+        "Writing fundamentals & grammar — 1 week",
+        "Researching & structuring articles — 2 weeks",
+        "SEO writing basics — 2 weeks",
+        "Copywriting for marketing — 2 weeks",
+        "Editing & style consistency — 1 week",
+        "Portfolio: 5 published pieces — 2 weeks"
+      ]
+    },
+    "teacher": {
+      title: "Teacher / Educator",
+      blurb: "You plan lessons, explain concepts, and guide students through learning and growth.",
+      keywords: ["teacher", "teaching", "educator", "professor"],
+      outline: [
+        "Subject-matter mastery in your chosen field — ongoing",
+        "Foundations of education & child psychology — 1 semester",
+        "Curriculum design & lesson planning — 1 semester",
+        "Classroom management — 4 weeks",
+        "Teaching practicum — 1 semester",
+        "Certification (e.g. B.Ed) — 1–2 years"
+      ]
+    },
+    "civil engineer": {
+      title: "Civil Engineer",
+      blurb: "You design, build and maintain infrastructure — roads, buildings, bridges and water systems.",
+      keywords: ["civil engineer", "civil engineering"],
+      outline: [
+        "Engineering mathematics & mechanics — 1 year",
+        "Structural analysis — 1 year",
+        "Construction materials & methods — 1 semester",
+        "Surveying & geotechnical engineering — 1 semester",
+        "CAD & design software (AutoCAD) — 1 semester",
+        "Final year design project — 1 year"
+      ]
+    },
+    "mechanical engineer": {
+      title: "Mechanical Engineer",
+      blurb: "You design, analyse and build mechanical systems — from engines to manufacturing equipment.",
+      keywords: ["mechanical engineer", "mechanical engineering"],
+      outline: [
+        "Engineering mathematics & mechanics — 1 year",
+        "Thermodynamics & fluid mechanics — 1 year",
+        "Machine design — 1 semester",
+        "Manufacturing processes — 1 semester",
+        "CAD (SolidWorks/AutoCAD) — 1 semester",
+        "Final year design project — 1 year"
+      ]
+    },
+    "ai/ml engineer": {
+      title: "AI / Machine Learning Engineer",
+      blurb: "You design and deploy intelligent systems — models that learn patterns from data and power real products.",
+      keywords: ["ai engineer", "machine learning engineer", "ml engineer", "ai/ml", "artificial intelligence engineer", "ai student"],
+      outline: [
+        "Python & math foundations (linear algebra, calculus, probability) — 4 weeks",
+        "Machine learning fundamentals (scikit-learn) — 5 weeks",
+        "Deep learning basics (neural networks, PyTorch/TensorFlow) — 6 weeks",
+        "Data handling & feature engineering — 3 weeks",
+        "Model deployment (Flask/Streamlit, APIs) — 3 weeks",
+        "Capstone: an end-to-end AI project — 4 weeks"
+      ]
+    },
+    "computer scientist": {
+      title: "Computer Scientist",
+      blurb: "You study the theory and practice of computation — algorithms, systems and problem-solving that underlie all software.",
+      keywords: ["computer science", "computer scientist", "cs student", "bs cs", "bscs"],
+      outline: [
+        "Programming fundamentals (C++/Python) — 1 semester",
+        "Data structures & algorithms — 1 semester",
+        "Discrete mathematics & computer architecture — 1 semester",
+        "Operating systems & databases — 1 semester",
+        "Software engineering & OOP — 1 semester",
+        "Final year project & electives (AI, networks, security) — final year"
+      ]
+    },
+    "deep learning engineer": {
+      title: "Deep Learning Engineer",
+      blurb: "You build and train neural networks for tasks like vision, language and generative AI at a deeper technical level.",
+      keywords: ["deep learning", "neural network engineer", "dl engineer", "deep learning engineer"],
+      outline: [
+        "Python & linear algebra refresher — 2 weeks",
+        "Neural network fundamentals (forward/back-propagation) — 4 weeks",
+        "CNNs for vision & RNNs/Transformers for sequences — 5 weeks",
+        "Frameworks: PyTorch or TensorFlow — 4 weeks",
+        "Model optimization & GPU training — 2 weeks",
+        "Capstone: train & deploy a deep learning model — 4 weeks"
+      ]
+    },
+    "nlp engineer": {
+      title: "NLP / LLM Engineer",
+      blurb: "You build systems that understand and generate human language — chatbots, translators, and large language model apps.",
+      keywords: ["nlp", "natural language processing", "llm engineer", "language model engineer"],
+      outline: [
+        "Python & text-processing basics — 2 weeks",
+        "Classical NLP (tokenization, embeddings, TF-IDF) — 3 weeks",
+        "Deep learning for NLP (RNNs, Transformers) — 5 weeks",
+        "Working with LLMs & prompt engineering — 3 weeks",
+        "Fine-tuning & retrieval-augmented generation (RAG) — 3 weeks",
+        "Capstone: build an NLP/LLM-powered app — 4 weeks"
+      ]
+    },
+    "computer vision engineer": {
+      title: "Computer Vision Engineer",
+      blurb: "You teach machines to interpret images and video — from object detection to facial recognition and beyond.",
+      keywords: ["computer vision", "cv engineer", "image processing", "vision engineer"],
+      outline: [
+        "Python & image processing basics (OpenCV) — 3 weeks",
+        "Linear algebra & signal processing for vision — 2 weeks",
+        "CNN architectures (ResNet, YOLO) — 5 weeks",
+        "Object detection & segmentation — 3 weeks",
+        "Deployment on edge/cloud — 2 weeks",
+        "Capstone: a vision-based application — 4 weeks"
+      ]
+    },
+    "robotics engineer": {
+      title: "Robotics Engineer",
+      blurb: "You combine hardware, software and AI to design machines that sense, decide and act in the physical world.",
+      keywords: ["robotics", "robotics engineer", "robot engineer"],
+      outline: [
+        "Programming & electronics fundamentals — 4 weeks",
+        "Control systems & sensors — 4 weeks",
+        "Robot Operating System (ROS) — 4 weeks",
+        "Computer vision & path planning for robots — 4 weeks",
+        "Machine learning for robotics — 3 weeks",
+        "Capstone: build/simulate a robotic system — 4 weeks"
+      ]
+    },
+    "cloud engineer": {
+      title: "Cloud / DevOps Engineer",
+      blurb: "You design, deploy and manage the cloud infrastructure that keeps applications running reliably at scale.",
+      keywords: ["cloud engineer", "devops", "cloud computing", "devops engineer"],
+      outline: [
+        "Linux & networking fundamentals — 3 weeks",
+        "A cloud platform (AWS/Azure/GCP basics) — 4 weeks",
+        "Containers & orchestration (Docker, Kubernetes) — 4 weeks",
+        "CI/CD pipelines — 2 weeks",
+        "Infrastructure as code (Terraform) — 3 weeks",
+        "Capstone: deploy a full production pipeline — 3 weeks"
+      ]
+    },
+    "data analyst": {
+      title: "Data Analyst",
+      blurb: "You explore data, spot trends, and turn numbers into clear reports and dashboards that guide decisions.",
+      keywords: ["data analyst", "data analytics", "business intelligence analyst"],
+      outline: [
+        "Excel & data fundamentals — 2 weeks",
+        "SQL for data querying — 3 weeks",
+        "Python for data analysis (pandas) — 3 weeks",
+        "Data visualization (Power BI/Tableau) — 3 weeks",
+        "Statistics for analysts — 2 weeks",
+        "Capstone: an end-to-end analytics dashboard — 3 weeks"
+      ]
+    }
+  };
+
+  /* ===================== Greetings ===================== */
+  var GREETINGS = {
+    triggers: [
+      "hi", "hii", "hiii", "hello", "hey", "heyy", "yo", "salam", "assalamualaikum",
+      "assalam o alaikum", "aoa", "good morning", "good afternoon", "good evening",
+      "howdy", "greetings", "sup", "what's up", "whats up"
+    ],
+    replies: [
+      "Hey there! 👋 Great to see you.",
+      "Hello! 😊 Ready to explore some career paths?",
+      "Hi! Hope you're having a good day."
+    ]
+  };
+
+  function isGreeting(text) {
+    var t = text.toLowerCase().trim().replace(/[!.,?]+$/g, '');
+    for (var i = 0; i < GREETINGS.triggers.length; i++) {
+      if (t === GREETINGS.triggers[i] || t.indexOf(GREETINGS.triggers[i]) === 0) return true;
+    }
+    return false;
+  }
+
+  function showGreeting() {
+    var reply = GREETINGS.replies[Math.floor(Math.random() * GREETINGS.replies.length)];
+    botSay(reply, 500);
+    setTimeout(showCategoryMenu, 900);
+  }
+
+  /* ===================== About the creator ===================== */
+  var ABOUT_ME = {
+    triggers: [
+      "who made this bot", "who made you", "who built this", "who built you",
+      "who created this", "who created you", "who developed this", "who developed you",
+      "who is your creator", "who's your creator", "your creator", "your developer",
+      "who are you", "about the developer", "about the creator", "about kashif",
+      "about you", "who owns this bot", "made this chatbot", "developer of this bot"
+    ],
+    html:
+      "<b>Kashif Hafeez</b><br>" +
+      "AI Student · Lahore, Pakistan<br>" +
+      "BS in Artificial Intelligence<br>" +
+      "Currently: building + learning + shipping projects.<br><br>" +
+      "<b>Core skills</b><ul>" +
+      "<li>Languages: Python, C++</li>" +
+      "<li>Frontend: Streamlit</li>" +
+      "<li>Backend: Flask</li>" +
+      "<li>Database: Firebase</li>" +
+      "<li>Infra/Tools: Vercel, Git, VS Code, Jupyter Notebook</li>" +
+      "</ul>" +
+      "<b>Find him online</b><ul>" +
+      "<li>Portfolio: <a href=\"https://kashifhafeez-portfolio1.vercel.app\" target=\"_blank\" rel=\"noopener\" style=\"color:#FBF8F2;text-decoration:underline;\">kashifhafeez-portfolio1.vercel.app</a></li>" +
+      "<li>GitHub: <a href=\"https://github.com/kashifkhan117401-bit\" target=\"_blank\" rel=\"noopener\" style=\"color:#FBF8F2;text-decoration:underline;\">@kashifkhan117401-bit</a></li>" +
+      "<li>LinkedIn: <a href=\"https://www.linkedin.com/in/kashif-hafeez-545794330\" target=\"_blank\" rel=\"noopener\" style=\"color:#FBF8F2;text-decoration:underline;\">kashif-hafeez</a></li>" +
+      "<li>Instagram: <a href=\"https://instagram.com/i_kashiif\" target=\"_blank\" rel=\"noopener\" style=\"color:#FBF8F2;text-decoration:underline;\">@i_kashiif</a></li>" +
+      "<li>Facebook: <a href=\"https://www.facebook.com/share/1AZ6rpfhxb\" target=\"_blank\" rel=\"noopener\" style=\"color:#FBF8F2;text-decoration:underline;\">Profile</a></li>" +
+      "</ul>"
+  };
+
+  function isAboutMeQuery(text) {
+    var t = text.toLowerCase();
+    for (var i = 0; i < ABOUT_ME.triggers.length; i++) {
+      if (t.indexOf(ABOUT_ME.triggers[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function showAboutMe() {
+    botSay(ABOUT_ME.html, 700);
+    setTimeout(function () {
+      setChips([{ label: '⬅ Back to career guide', action: showCategoryMenu }]);
+    }, 1200);
+  }
+
+  /* ===================== State & DOM refs ===================== */
+  var launcher = document.getElementById('rhwLauncher');
+  var panel = document.getElementById('rhwPanel');
+  var closeBtn = document.getElementById('rhwClose');
+  var messagesEl = document.getElementById('rhwMessages');
+  var chipsEl = document.getElementById('rhwChips');
+  var input = document.getElementById('rhwInput');
+  var sendBtn = document.getElementById('rhwSend');
+  var started = false;
+
+  launcher.addEventListener('click', function () {
+    panel.classList.toggle('rhw-open');
+    if (panel.classList.contains('rhw-open') && !started) {
+      started = true;
+      startConversation();
+    }
+  });
+  closeBtn.addEventListener('click', function () { panel.classList.remove('rhw-open'); });
+
+  function addMessage(text, sender) {
+    var row = document.createElement('div');
+    row.className = 'rhw-row ' + (sender === 'user' ? 'rhw-user' : 'rhw-bot');
+    var bubble = document.createElement('div');
+    bubble.className = 'rhw-bubble';
+    bubble.innerHTML = text;
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function showTyping(callback, delay) {
+    var row = document.createElement('div');
+    row.className = 'rhw-row rhw-bot rhw-typing';
+    row.innerHTML = '<div class="rhw-bubble"><span></span><span></span><span></span></div>';
+    messagesEl.appendChild(row);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    setTimeout(function () {
+      messagesEl.removeChild(row);
+      callback();
+    }, delay || 700);
+  }
+
+  function botSay(text, delay) {
+    showTyping(function () { addMessage(text, 'bot'); }, delay);
+  }
+
+  function setChips(list) {
+    chipsEl.innerHTML = '';
+    list.forEach(function (item) {
+      var chip = document.createElement('button');
+      chip.className = 'rhw-chip';
+      chip.type = 'button';
+      chip.textContent = item.label;
+      chip.addEventListener('click', function () {
+        addMessage(item.label, 'user');
+        chipsEl.innerHTML = '';
+        item.action();
+      });
+      chipsEl.appendChild(chip);
+    });
+  }
+
+  /* ===================== Conversation flow ===================== */
+  function startConversation() {
+    botSay("Hi! I'm <b>Kashif Personal AI</b> — I can help you explore professions that fit you, and lay out a course roadmap to get there.", 500);
+    setTimeout(showCategoryMenu, 900);
+  }
+
+  function showCategoryMenu() {
+    botSay("Which area interests you most? Or just type a profession you already have in mind.", 500);
+    setTimeout(function () {
+      var chips = Object.keys(CATEGORIES).map(function (cat) {
+        return { label: cat, action: function () { showProfessionsInCategory(cat); } };
+      });
+      chips.push({ label: '👤 About the creator', action: showAboutMe });
+      setChips(chips);
+    }, 700);
+  }
+
+  function showProfessionsInCategory(cat) {
+    var list = CATEGORIES[cat];
+    var html = "Here are a few paths in <b>" + cat + "</b>:<ul>" +
+      list.map(function (p) { return "<li>" + p + "</li>"; }).join('') +
+      "</ul>Tap one to see what it's about and its course outline.";
+    botSay(html, 600);
+    setTimeout(function () {
+      var chips = list.map(function (p) {
+        return { label: p, action: function () { showProfessionDetail(p.toLowerCase()); } };
+      });
+      chips.push({ label: '⬅ Back to areas', action: showCategoryMenu });
+      setChips(chips);
+    }, 800);
+  }
+
+  function showProfessionDetail(key) {
+    var prof = PROFESSIONS[key];
+    if (!prof) { botSay("I don't have that one mapped yet — try one of the options below.", 400); setTimeout(showCategoryMenu, 700); return; }
+    botSay("<b>" + prof.title + "</b><br>" + prof.blurb, 500);
+    setTimeout(function () {
+      var html = "Here's a suggested <b>course outline</b> to get there:<ul>" +
+        prof.outline.map(function (step) { return "<li>" + step + "</li>"; }).join('') +
+        "</ul>";
+      botSay(html, 900);
+    }, 900);
+    setTimeout(function () {
+      setChips([
+        { label: 'See another profession', action: showCategoryMenu },
+        { label: 'That fits me — thanks!', action: function () { botSay("Glad it helped! Come back anytime you want to explore another path. 🎯", 400); } }
+      ]);
+    }, 1900);
+  }
+
+  function findProfessionByText(text) {
+    var t = text.toLowerCase();
+    for (var key in PROFESSIONS) {
+      var prof = PROFESSIONS[key];
+      if (t.indexOf(key) !== -1) return key;
+      for (var i = 0; i < prof.keywords.length; i++) {
+        if (t.indexOf(prof.keywords[i]) !== -1) return key;
+      }
+    }
+    return null;
+  }
+
+  function handleUserText(text) {
+    addMessage(text, 'user');
+    chipsEl.innerHTML = '';
+    if (isAboutMeQuery(text)) {
+      showAboutMe();
+      return;
+    }
+    if (isGreeting(text)) {
+      showGreeting();
+      return;
+    }
+    var match = findProfessionByText(text);
+    if (match) {
+      showProfessionDetail(match);
+    } else {
+      botSay("I don't recognise that one specifically yet, but let's find something close — pick an area below, or try naming a role like \"developer\", \"doctor\" or \"designer\".", 600);
+      setTimeout(showCategoryMenu, 900);
+    }
+  }
+
+  sendBtn.addEventListener('click', function () {
+    var val = input.value.trim();
+    if (!val) return;
+    input.value = '';
+    if (!started) { started = true; panel.classList.add('rhw-open'); }
+    handleUserText(val);
+  });
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') sendBtn.click();
+  });
+})();
+</script>
