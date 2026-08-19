@@ -105,7 +105,7 @@ Made with care for a strong digital presence and interactive user experience. âœ
 
 [![Portfolio](https://img.shields.io/badge/Portfolio-Live%20Site-0F172A?style=for-the-badge&logo=vercel)](https://kashifhafeez-portfolio1.vercel.app/)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Connect-0077B5?style=for-the-badge&logo=linkedin)](https://linkedin.com/in/kashif-hafeez-545794330)
-[![Email](https://img.shields.io/badge/Email-kashifkhan117401%40gmail.com-D14836?style=for-the-badge&logo=gmail)](mailto:kashifkhan117401@gmail.com)
+[![Email](https://img.shields.io/badge/Email-kashif.hafeez.dev%40gmail.com-D14836?style=for-the-badge&logo=gmail)](mailto:kashif.hafeez.dev@gmail.com)
 [![ORCID](https://img.shields.io/badge/ORCID-0009--0002--5604--3264-A6CE39?style=for-the-badge&logo=orcid)](https://orcid.org/0009-0002-5604-3264)
 
 </div>
